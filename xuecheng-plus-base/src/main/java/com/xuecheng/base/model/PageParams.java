@@ -1,15 +1,13 @@
 package com.xuecheng.base.model;
 
 import io.swagger.annotations.ApiModelProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 @Data
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class PageParams {
     //当前页码
     @ApiModelProperty("页码")

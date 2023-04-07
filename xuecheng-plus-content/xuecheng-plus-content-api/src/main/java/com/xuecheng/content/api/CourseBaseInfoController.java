@@ -5,6 +5,7 @@ import com.xuecheng.content.model.dto.QueryCourseParamsDto;
 import com.xuecheng.base.model.PageParams;
 import com.xuecheng.base.model.PageResult;
 import com.xuecheng.content.model.po.CourseBase;
+import com.xuecheng.content.service.CourseBaseInfoService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,16 +22,12 @@ import java.util.List;
 public class CourseBaseInfoController {
 
     @Autowired
-    private CourseBaseMapper mapper;
+    private CourseBaseInfoService courseBaseInfoService;
 
     @ApiOperation("课程查询接口")
     @PostMapping("/course/list")
-    public PageResult list(PageParams pageParams, @RequestBody(required = false) QueryCourseParamsDto queryCourseParams){
-        CourseBase courseBase = new CourseBase();
-        courseBase.setName("测试");
-        courseBase.setCreateDate(LocalDateTime.now());
-        List<CourseBase> list = new ArrayList();
-        list.add(courseBase);
-        return new PageResult(list, 10, 1, 5);
+    public PageResult<CourseBase> list(PageParams pageParams, @RequestBody(required = false) QueryCourseParamsDto queryCourseParams){
+        PageResult<CourseBase> pageResult = courseBaseInfoService.queryCourseBaseList(pageParams, queryCourseParams);
+        return pageResult;
     }
 }

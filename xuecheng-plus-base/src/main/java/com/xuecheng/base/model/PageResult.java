@@ -1,9 +1,6 @@
 package com.xuecheng.base.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.io.Serializable;
 import java.util.List;
@@ -12,6 +9,7 @@ import java.util.List;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class PageResult<T> implements Serializable {
     private List<T> items;
     private long counts;
