@@ -79,3 +79,6 @@ Content-Type: application/json
   "price": 0.01
 }
 
+###
+GET {{content_host}}/content/teachplan/117/tree-nodes
+
