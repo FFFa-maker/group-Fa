@@ -31,9 +31,9 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         List<CourseTeacher> teachers = courseTeacherMapper.selectList(queryWrapper);
         CourseTeacherDto dto = new CourseTeacherDto();
         List<CourseTeacherDto> dtos = new ArrayList<>();
-        if (teachers == null || teachers.size() == 0) {
-            XueChengPlusException.cast("未查询到该课程教师信息");
-        }
+//        if (teachers == null || teachers.size() == 0) {
+//            XueChengPlusException.cast("未查询到该课程教师信息");
+//        }
         try {
             ListUtils.copyProperties(teachers, dtos, CourseTeacherDto.class);
         } catch (Exception e) {
