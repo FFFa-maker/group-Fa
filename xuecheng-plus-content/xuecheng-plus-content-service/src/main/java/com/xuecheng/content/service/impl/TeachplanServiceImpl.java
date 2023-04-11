@@ -1,10 +1,13 @@
 package com.xuecheng.content.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.xuecheng.base.exception.XueChengPlusException;
 import com.xuecheng.content.mapper.TeachplanMapper;
+import com.xuecheng.content.mapper.TeachplanMediaMapper;
 import com.xuecheng.content.model.dto.SaveTeachplanDto;
 import com.xuecheng.content.model.dto.TeachplanDto;
 import com.xuecheng.content.model.po.Teachplan;
+import com.xuecheng.content.model.po.TeachplanMedia;
 import com.xuecheng.content.service.TeachplanService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,9 @@ import java.util.List;
 public class TeachplanServiceImpl implements TeachplanService {
     @Autowired
     private TeachplanMapper teachplanMapper;
+    @Autowired
+    private TeachplanMediaMapper teachplanMediaMapper;
+
     @Override
     public List<TeachplanDto> findTeachplanTree(long courseId) {
         return teachplanMapper.selectTreeNodes(courseId);
@@ -36,11 +42,81 @@ public class TeachplanServiceImpl implements TeachplanService {
         }
     }
 
-    private int getTeachplanCount(long courseId, long parentId){
+    @Override
+    public void deleteTeachplan(long id){
+        Teachplan teachplan = teachplanMapper.selectById(id);
+        //一级章
+        if(teachplan.getGrade()==1){
+            int childCount = getChildCount(id);
+            if(childCount>0){
+
+                XueChengPlusException.cast("课程计划还有子级信息无法操作");
+            }else{
+                teachplanMapper.deleteById(id);
+            }
+        }
+        //二级章节
+        else{
+            LambdaQueryWrapper<TeachplanMedia> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TeachplanMedia::getTeachplanId, id);
+            TeachplanMedia teachplanMedia = teachplanMediaMapper.selectOne(queryWrapper);
+            if(teachplanMedia!=null){
+                teachplanMediaMapper.delete(queryWrapper);
+            }
+            teachplanMapper.deleteById(id);
+        }
+    }
+
+    @Override
+    public void moveTeachplan(String move, long id){
         LambdaQueryWrapper<Teachplan> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Teachplan::getCourseId, courseId);
+        Teachplan teachplan = teachplanMapper.selectById(id);
+        queryWrapper.eq(Teachplan::getParentid, teachplan.getParentid());
+        List<Teachplan> list = null;
+        if(teachplan!=null){
+            if(move.equals("moveup")){
+                queryWrapper.lt(Teachplan::getOrderby, teachplan.getOrderby());
+                list = teachplanMapper.selectList(queryWrapper);
+                list.sort((a, b)->b.getOrderby()-a.getOrderby());
+            }else if(move.equals("movedown")){
+                queryWrapper.gt(Teachplan::getOrderby, teachplan.getOrderby());
+                list = teachplanMapper.selectList(queryWrapper);
+                list.sort((a,b)->a.getOrderby()-b.getOrderby());
+            }else{
+                XueChengPlusException.cast("移动方向不正确");
+            }
+            if(list.size()==0){
+                XueChengPlusException.cast("无法移动至更边缘");
+            }else{
+                Teachplan teachplanSwap = list.get(0);
+                int temp = teachplan.getOrderby();
+                teachplan.setOrderby(teachplanSwap.getOrderby());
+                teachplanSwap.setOrderby(temp);
+                teachplanMapper.updateById(teachplan);
+                teachplanMapper.updateById(teachplanSwap);
+            }
+        }else {
+            XueChengPlusException.cast("未查询到该移动课程");
+        }
+
+    }
+
+    private int getChildCount(long parentId){
+        LambdaQueryWrapper<Teachplan> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Teachplan::getParentid, parentId);
         int count = teachplanMapper.selectCount(queryWrapper);
         return count;
     }
+
+    private int getTeachplanCount(long courseId, long parentId){
+        LambdaQueryWrapper<Teachplan> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Teachplan::getCourseId, courseId);
+        queryWrapper.eq(Teachplan::getParentid, parentId);
+        List<Teachplan> list = teachplanMapper.selectList(queryWrapper);
+        final int[] max = {0};
+        list.stream().forEach(item-> max[0] = Math.max(max[0], item.getOrderby()));
+        int count = teachplanMapper.selectCount(queryWrapper);
+        return max[0];
+    }
+
 }

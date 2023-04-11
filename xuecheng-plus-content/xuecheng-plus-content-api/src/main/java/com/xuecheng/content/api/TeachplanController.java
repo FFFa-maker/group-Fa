@@ -1,11 +1,13 @@
 package com.xuecheng.content.api;
 
+import com.xuecheng.base.exception.XueChengPlusException;
 import com.xuecheng.content.model.dto.SaveTeachplanDto;
 import com.xuecheng.content.model.dto.TeachplanDto;
 import com.xuecheng.content.service.TeachplanService;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,5 +29,21 @@ public class TeachplanController {
     @PostMapping("/teachplan")
     public void saveTeachplan(@RequestBody SaveTeachplanDto teachplan){
         teachplanService.saveTeachPlan(teachplan);
+    }
+
+    @ApiOperation("课程计划删除")
+    @DeleteMapping("/teachplan/{id}")
+    public void deleteTeachplan(@PathVariable Long id){
+        teachplanService.deleteTeachplan(id);
+    }
+
+    @ApiOperation("课程计划移动")
+    @PostMapping("/teachplan/{move}/{id}")
+    public void moveTeachplan(@PathVariable String move, @PathVariable Long id){
+        if(!(move.equals("moveup")||move.equals("movedown"))){
+            throw new RuntimeException();
+        }else{
+            teachplanService.moveTeachplan(move, id);
+        }
     }
 }
