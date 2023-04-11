@@ -35,10 +35,10 @@ public class CourseTeacherController {
     @PutMapping("/courseTeacher")
     public CourseTeacherDto updateCourseTeacher(@RequestBody CourseTeacherDto dto){
         Long companyId = 1232141425L;
-        return courseTeacherService.updateCourseTeacher(companyId, dto);
+        return courseTeacherService.insertCourseTeacher(companyId, dto);
     }
 
-    @DeleteMapping("/courseTeacher/{courseId}/{id}")
+    @DeleteMapping("/courseTeacher/course/{courseId}/{id}")
     public void deleteCourseTeacher(@PathVariable Long courseId, @PathVariable Long id){
         Long companyId = 1232141425L;
         courseTeacherService.deleteCourseTeacher(companyId, courseId, id);

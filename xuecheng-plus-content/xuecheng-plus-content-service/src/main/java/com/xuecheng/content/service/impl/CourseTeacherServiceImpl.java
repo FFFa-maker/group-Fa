@@ -57,7 +57,10 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
             queryWrapper.eq(CourseTeacher::getTeacherName, courseTeacherDto.getTeacherName());
             int count = courseTeacherMapper.selectCount(queryWrapper);
             if(count>0){
-                XueChengPlusException.cast("无法添加同一位教师信息");
+//                XueChengPlusException.cast("无法添加同一位教师信息");
+                CourseTeacher courseTeacher = courseTeacherMapper.selectOne(queryWrapper);
+                BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
+                courseTeacherMapper.updateById(courseTeacher);
             }else{
                 CourseTeacher courseTeacher = new CourseTeacher();
                 BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
