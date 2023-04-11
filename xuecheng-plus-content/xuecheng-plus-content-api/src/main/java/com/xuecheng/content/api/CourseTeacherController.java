@@ -24,7 +24,7 @@ public class CourseTeacherController {
         return courseTeacherService.getCourseTeacherByCourseId(courseId);
     }
 
-    @ApiOperation("添加教师信息")
+    @ApiOperation("添加/更新教师信息")
     @PostMapping("/courseTeacher")
     public CourseTeacherDto insertCourseTeacher(@RequestBody CourseTeacherDto dto){
         Long companyId = 1232141425L;

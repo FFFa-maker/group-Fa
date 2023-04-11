@@ -33,13 +33,13 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         List<CourseTeacherDto> dtos = new ArrayList<>();
         if (teachers == null || teachers.size() == 0) {
             XueChengPlusException.cast("未查询到该课程教师信息");
-        } else {
-            try {
-                ListUtils.copyProperties(teachers, dtos, CourseTeacherDto.class);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
+        try {
+            ListUtils.copyProperties(teachers, dtos, CourseTeacherDto.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
         return dtos;
     }
@@ -51,23 +51,29 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         Long id = courseTeacherDto.getId();
         if (!companyId.equals(courseBase.getCompanyId())) {
             XueChengPlusException.cast("只允许向对应机构中添加教师信息");
-        } else {
-            LambdaQueryWrapper<CourseTeacher> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(CourseTeacher::getCourseId, courseTeacherDto.getCourseId());
-            queryWrapper.eq(CourseTeacher::getTeacherName, courseTeacherDto.getTeacherName());
-            int count = courseTeacherMapper.selectCount(queryWrapper);
-            if(count>0){
-//                XueChengPlusException.cast("无法添加同一位教师信息");
-                CourseTeacher courseTeacher = courseTeacherMapper.selectOne(queryWrapper);
-                BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
-                courseTeacherMapper.updateById(courseTeacher);
-            }else{
-                CourseTeacher courseTeacher = new CourseTeacher();
-                BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
-                courseTeacherMapper.insert(courseTeacher);
-                id = courseTeacher.getId();
-            }
         }
+        LambdaQueryWrapper<CourseTeacher> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CourseTeacher::getCourseId, courseTeacherDto.getCourseId());
+        queryWrapper.eq(CourseTeacher::getTeacherName, courseTeacherDto.getTeacherName());
+        //courseId和name相同的个数
+        int count = courseTeacherMapper.selectCount(queryWrapper);
+        //id不空则修改
+        if (id != null) {
+            updateCourseTeacher(companyId, courseTeacherDto);
+        }
+        //id空则添加
+        else {
+            if (count > 0) {
+                XueChengPlusException.cast("无法添加同一位教师信息");
+            }
+            //courseId和name不同则insert
+            CourseTeacher courseTeacher = new CourseTeacher();
+            BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
+            courseTeacherMapper.insert(courseTeacher);
+            id = courseTeacher.getId();
+
+        }
+
         CourseTeacherDto dto = new CourseTeacherDto();
         CourseTeacher teacher = courseTeacherMapper.selectById(id);
         BeanUtils.copyProperties(teacher, dto);
@@ -75,21 +81,33 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
     }
 
     @Override
-    public CourseTeacherDto updateCourseTeacher(Long companyId, CourseTeacherDto courseTeacherDto){
+    public CourseTeacherDto updateCourseTeacher(Long companyId, CourseTeacherDto courseTeacherDto) {
         Long courseId = courseTeacherDto.getCourseId();
         CourseBase courseBase = courseBaseMapper.selectById(courseId);
         Long id = courseTeacherDto.getId();
         if (!companyId.equals(courseBase.getCompanyId())) {
             XueChengPlusException.cast("只允许向对应机构中修改教师信息");
-        } else {
-            CourseTeacher courseTeacher = courseTeacherMapper.selectById(id);
-            if(courseTeacher==null){
-                XueChengPlusException.cast("该教师信息不存在");
-            }else{
-                BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
-                courseTeacherMapper.updateById(courseTeacher);
-            }
         }
+        CourseTeacher courseTeacher = courseTeacherMapper.selectById(id);
+        if (courseTeacher == null) {
+            XueChengPlusException.cast("该教师信息不存在");
+        }
+        //修改
+        else {
+            //判断dto是否与其他数据冲突
+            LambdaQueryWrapper<CourseTeacher> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(CourseTeacher::getCourseId, courseTeacherDto.getCourseId());
+            queryWrapper.eq(CourseTeacher::getTeacherName, courseTeacherDto.getTeacherName());
+            queryWrapper.ne(CourseTeacher::getId, courseTeacherDto.getId());
+            //courseId和name相同的个数
+            int count = courseTeacherMapper.selectCount(queryWrapper);
+            if (count > 0) {
+                XueChengPlusException.cast("该教师信息与其他教师信息冲突，同一课程内教师名称不能相同");
+            }
+            BeanUtils.copyProperties(courseTeacherDto, courseTeacher);
+            courseTeacherMapper.updateById(courseTeacher);
+        }
+
         CourseTeacherDto dto = new CourseTeacherDto();
         CourseTeacher teacher = courseTeacherMapper.selectById(id);
         BeanUtils.copyProperties(teacher, dto);
@@ -101,14 +119,14 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         CourseBase courseBase = courseBaseMapper.selectById(courseId);
         if (!companyId.equals(courseBase.getCompanyId())) {
             XueChengPlusException.cast("只允许向对应机构中删除教师信息");
-        }else{
-            LambdaQueryWrapper<CourseTeacher> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(CourseTeacher::getCourseId, courseId);
-            queryWrapper.eq(CourseTeacher::getId, id);
-            CourseTeacher teacher = courseTeacherMapper.selectOne(queryWrapper);
-            if(teacher!=null){
-                courseTeacherMapper.delete(queryWrapper);
-            }
         }
+        LambdaQueryWrapper<CourseTeacher> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CourseTeacher::getCourseId, courseId);
+        queryWrapper.eq(CourseTeacher::getId, id);
+        CourseTeacher teacher = courseTeacherMapper.selectOne(queryWrapper);
+        if (teacher != null) {
+            courseTeacherMapper.delete(queryWrapper);
+        }
+
     }
 }
