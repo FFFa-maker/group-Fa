@@ -1,5 +1,5 @@
 ###
-POST {{content_host}}/content/course/list?pageNo=1&pageSize=2
+POST {{gateway_host}}/content/course/list?pageNo=1&pageSize=2
 Content-Type: application/json
 
 {
@@ -12,7 +12,7 @@ Content-Type: application/json
 GET {{content_host}}/content/course-category/tree-nodes
 
 ### 创建课程
-POST {{content_host}}/content/course
+POST {{gateway_host}}/content/course
 Content-Type: application/json
 
 {
@@ -137,3 +137,6 @@ Content-Type: application/json
 
 ###
 DELETE {{content_host}}/content/courseTeacher/75/26
+
+###
+DELETE {{content_host}}/content/course/75
