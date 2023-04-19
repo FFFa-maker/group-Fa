@@ -151,3 +151,15 @@ Content-Type: application/octet-stream
 
 < d:/develop/upload/3.jpg
 
+### 课程计划绑定视频
+POST {{content_host}}/content/teachplan/association/media
+Content-Type: application/json
+
+{
+  "mediaId": "",
+  "fileName": "",
+  "teachplanId": ""
+}
+
+
+
