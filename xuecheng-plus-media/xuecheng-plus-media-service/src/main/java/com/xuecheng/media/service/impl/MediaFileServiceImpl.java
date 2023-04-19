@@ -9,10 +9,12 @@ import com.xuecheng.base.model.PageParams;
 import com.xuecheng.base.model.PageResult;
 import com.xuecheng.base.model.RestResponse;
 import com.xuecheng.media.mapper.MediaFilesMapper;
+import com.xuecheng.media.mapper.MediaProcessMapper;
 import com.xuecheng.media.model.dto.QueryMediaParamsDto;
 import com.xuecheng.media.model.dto.UploadFileParamsDto;
 import com.xuecheng.media.model.dto.UploadFileResultDto;
 import com.xuecheng.media.model.po.MediaFiles;
+import com.xuecheng.media.model.po.MediaProcess;
 import com.xuecheng.media.service.MediaFileService;
 import io.minio.*;
 import io.minio.messages.DeleteError;
@@ -48,6 +50,8 @@ public class MediaFileServiceImpl implements MediaFileService {
 
     @Autowired
     MediaFilesMapper mediaFilesMapper;
+    @Autowired
+    MediaProcessMapper mediaProcessMapper;
     @Autowired
     MinioClient minioClient;
     @Autowired
@@ -96,6 +100,7 @@ public class MediaFileServiceImpl implements MediaFileService {
         return uploadFileResultDto;
     }
 
+    @Override
     public boolean addMediaFilesToMinIO(String localFilePath, String mimeType, String bucket, String objectName) {
         try {
             UploadObjectArgs testBucket = UploadObjectArgs.builder()
@@ -135,6 +140,8 @@ public class MediaFileServiceImpl implements MediaFileService {
                 log.error("保存文件信息到数据库失败,{}", mediaFiles.toString());
                 XueChengPlusException.cast("保存文件信息失败");
             }
+            //添加待处理信息
+            addWaitingTask(mediaFiles);
             log.debug("保存文件信息到数据库成功,{}", mediaFiles.toString());
         }
         return mediaFiles;
@@ -229,10 +236,8 @@ public class MediaFileServiceImpl implements MediaFileService {
         //验证
         File minioFile = downloadFileFromMinIO(bucket_videoFiles, mergeFilePath);
         if (minioFile == null) {
-            if (minioFile == null) {
-                log.debug("下载合并后文件失败,mergeFilePath:{}", mergeFilePath);
-                return RestResponse.validfail(false, "下载合并后文件失败。");
-            }
+            log.debug("下载合并后文件失败,mergeFilePath:{}", mergeFilePath);
+            return RestResponse.validfail(false, "下载合并后文件失败。");
         }
         try (InputStream newFileInputStream = new FileInputStream(minioFile)) {
             String md5Hex = DigestUtils.md5Hex(newFileInputStream);
@@ -244,15 +249,14 @@ public class MediaFileServiceImpl implements MediaFileService {
             log.debug("校验文件失败,fileMd5:{},异常:{}", fileMd5, e.getMessage(), e);
             return RestResponse.validfail(false, "文件合并校验失败，最终上传失败。");
         } finally {
-            if (minioFile != null) {
-                minioFile.delete();
-            }
+            minioFile.delete();
         }
         currentProxy.addMediaFilesToDb(companyId, fileMd5, uploadFileParamsDto, bucket_videoFiles, mergeFilePath);
         clearChunkFiles(chunkFileFolderPath, chunkTotal);
         return RestResponse.success(true);
     }
 
+    @Override
     public File downloadFileFromMinIO(String bucket, String objectName) {
         //临时文件
         File minioFile = null;
@@ -280,7 +284,6 @@ public class MediaFileServiceImpl implements MediaFileService {
         }
         return null;
     }
-
 
     private String getDefaultFolderPath() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -339,6 +342,22 @@ public class MediaFileServiceImpl implements MediaFileService {
         } catch (Exception e) {
             e.printStackTrace();
             log.error("清除分块文件失败,chunkFileFolderPath:{}", chunkFileFolderPath, e);
+        }
+    }
+
+    private void addWaitingTask(MediaFiles mediaFiles){
+        String filename = mediaFiles.getFilename();
+        String extension = filename.substring(filename.lastIndexOf("."));
+        String mimeType = getMimeType(extension);
+        //avi的mimeType
+        if(mimeType.equals("video/x-msvideo")){
+            MediaProcess mediaProcess = new MediaProcess();
+            BeanUtils.copyProperties(mediaFiles, mediaProcess);
+            //未处理
+            mediaProcess.setStatus("1");
+            //失败次数
+            mediaProcess.setFailCount(0);
+            mediaProcessMapper.insert(mediaProcess);
         }
     }
 }
