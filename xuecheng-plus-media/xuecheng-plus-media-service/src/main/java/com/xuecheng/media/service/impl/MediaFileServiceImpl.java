@@ -285,6 +285,11 @@ public class MediaFileServiceImpl implements MediaFileService {
         return null;
     }
 
+    @Override
+    public MediaFiles getFileById(String mediaId){
+        return mediaFilesMapper.selectById(mediaId);
+    }
+
     private String getDefaultFolderPath() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         String folder = sdf.format(new Date()).replace("-", "/") + "/";

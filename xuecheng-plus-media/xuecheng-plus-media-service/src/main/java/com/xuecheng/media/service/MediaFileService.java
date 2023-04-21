@@ -35,4 +35,6 @@ public interface MediaFileService {
     public RestResponse mergechunks(Long companyId,String fileMd5,int chunkTotal,UploadFileParamsDto uploadFileParamsDto);
 
     File downloadFileFromMinIO(String bucket, String objectName);
+
+    MediaFiles getFileById(String mediaId);
 }
