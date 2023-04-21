@@ -161,5 +161,5 @@ Content-Type: application/json
   "teachplanId": ""
 }
 
-
-
+### 课程发布
+POST {{content_host}}/content/coursepublish/2
