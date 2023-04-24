@@ -2,6 +2,8 @@ package com.xuecheng.content.service;
 
 import com.xuecheng.content.model.dto.CoursePreviewDto;
 
+import java.io.File;
+
 public interface CoursePublishService {
     /**
      * @description 获取课程预览信息
@@ -30,4 +32,8 @@ public interface CoursePublishService {
      * @date 2022/9/20 16:23
      */
     public void publish(Long companyId,Long courseId);
+
+    File generateCourseHtml(long courseId);
+
+    void uploadCourseHtml(Long courseId, File file);
 }

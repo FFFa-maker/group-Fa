@@ -1,18 +1,34 @@
 package com.xuecheng.content.service.jobhandler;
 
+import com.xuecheng.base.exception.XueChengPlusException;
+import com.xuecheng.content.model.dto.CoursePreviewDto;
+import com.xuecheng.content.service.CoursePublishService;
 import com.xuecheng.messagesdk.model.po.MqMessage;
 import com.xuecheng.messagesdk.service.MessageProcessAbstract;
 import com.xuecheng.messagesdk.service.MqMessageService;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 public class CoursePublishTask extends MessageProcessAbstract {
+    @Autowired
+    CoursePublishService coursePublishService;
 
     @XxlJob("CoursePublishJobHandler")
     public void coursePublishJobHandler() throws Exception {
@@ -32,9 +48,9 @@ public class CoursePublishTask extends MessageProcessAbstract {
         //静态页面处理
         generateCourseHtml(mqMessage, courseId);
         //elasticsearch
-        saveCourseIndex(mqMessage, courseId);
+//        saveCourseIndex(mqMessage, courseId);
         //redis
-        saveCourseCache(mqMessage, courseId);
+//        saveCourseCache(mqMessage, courseId);
 
         return true;
     }
@@ -51,11 +67,13 @@ public class CoursePublishTask extends MessageProcessAbstract {
             log.debug("课程静态化已处理直接返回，课程id:{}", courseId);
             return;
         }
-        try {
-            TimeUnit.SECONDS.sleep(10);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        //开始进行课程静态化，生成HTML
+        File file = coursePublishService.generateCourseHtml(courseId);
+        if(file==null){
+            XueChengPlusException.cast("商城页面为空");
         }
+        //上传HTML
+        coursePublishService.uploadCourseHtml(courseId, file);
         mqMessageService.completedStageOne(id);
     }
 
