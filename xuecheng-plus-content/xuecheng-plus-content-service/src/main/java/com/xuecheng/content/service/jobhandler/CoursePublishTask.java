@@ -1,7 +1,11 @@
 package com.xuecheng.content.service.jobhandler;
 
 import com.xuecheng.base.exception.XueChengPlusException;
+import com.xuecheng.content.feignclient.CourseIndex;
+import com.xuecheng.content.feignclient.SearchServiceClient;
+import com.xuecheng.content.mapper.CoursePublishMapper;
 import com.xuecheng.content.model.dto.CoursePreviewDto;
+import com.xuecheng.content.model.po.CoursePublish;
 import com.xuecheng.content.service.CoursePublishService;
 import com.xuecheng.messagesdk.model.po.MqMessage;
 import com.xuecheng.messagesdk.service.MessageProcessAbstract;
@@ -12,6 +16,7 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
@@ -29,6 +34,10 @@ import java.util.concurrent.TimeUnit;
 public class CoursePublishTask extends MessageProcessAbstract {
     @Autowired
     CoursePublishService coursePublishService;
+    @Autowired
+    SearchServiceClient searchServiceClient;
+    @Autowired
+    CoursePublishMapper coursePublishMapper;
 
     @XxlJob("CoursePublishJobHandler")
     public void coursePublishJobHandler() throws Exception {
@@ -48,7 +57,7 @@ public class CoursePublishTask extends MessageProcessAbstract {
         //静态页面处理
         generateCourseHtml(mqMessage, courseId);
         //elasticsearch
-//        saveCourseIndex(mqMessage, courseId);
+        saveCourseIndex(mqMessage, courseId);
         //redis
 //        saveCourseCache(mqMessage, courseId);
 
@@ -87,12 +96,15 @@ public class CoursePublishTask extends MessageProcessAbstract {
             log.debug("");
             return;
         }
-        try {
-            TimeUnit.SECONDS.sleep(2);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        CoursePublish coursePublish = coursePublishMapper.selectById(courseId);
+        //
+        CourseIndex courseIndex = new CourseIndex();
+        BeanUtils.copyProperties(coursePublish, courseIndex);
+        Boolean add = searchServiceClient.add(courseIndex);
+        if(!add){
+            XueChengPlusException.cast("远程调用添加索引失败");
         }
-        mqMessageService.completedStageThree(id);
+        mqMessageService.completedStageTwo(id);
     }
 
     //课程信息缓存
@@ -110,6 +122,6 @@ public class CoursePublishTask extends MessageProcessAbstract {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        mqMessageService.completedStageTwo(id);
+        mqMessageService.completedStageThree(id);
     }
 }

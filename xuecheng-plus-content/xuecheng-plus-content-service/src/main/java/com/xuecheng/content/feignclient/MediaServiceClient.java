@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 //FallbackFactory可以拿到异常信息
 @FeignClient(value = "media-api", configuration = {MultipartSupportConfig.class}, fallbackFactory = MediaServiceClientFallbackFactory.class)
 public interface MediaServiceClient {
-    @RequestMapping(value = "/media/upload/coursefile",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequestMapping(value = "/media/upload/coursefile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     String uploadFile(@RequestPart("filedata") MultipartFile upload,
                       @RequestParam(value = "objectName", required = false) String objectName);
 }
