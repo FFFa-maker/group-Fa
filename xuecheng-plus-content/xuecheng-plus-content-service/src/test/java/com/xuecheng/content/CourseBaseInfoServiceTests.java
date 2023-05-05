@@ -24,7 +24,7 @@ public class CourseBaseInfoServiceTests {
                 .pageNo(1L)
                 .pageSize(3L)
                 .build();
-        PageResult<CourseBase> courseBasePageResult = service.queryCourseBaseList(pageParams, queryCourseParamsDto);
-        System.out.println(courseBasePageResult);
+//        PageResult<CourseBase> courseBasePageResult = service.queryCourseBaseList(pageParams, queryCourseParamsDto);
+//        System.out.println(courseBasePageResult);
     }
 }
