@@ -1,6 +1,7 @@
 package com.xuecheng.content.service;
 
 import com.xuecheng.content.model.dto.CoursePreviewDto;
+import com.xuecheng.content.model.po.CoursePublish;
 
 import java.io.File;
 
@@ -36,4 +37,6 @@ public interface CoursePublishService {
     File generateCourseHtml(long courseId);
 
     void uploadCourseHtml(Long courseId, File file);
+
+    CoursePublish getCoursePublish(Long courseId);
 }
