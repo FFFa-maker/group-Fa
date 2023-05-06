@@ -26,15 +26,15 @@ public class PasswordAuthServiceImpl implements AuthService {
     public XcUserExt execute(AuthParamsDto authParamsDto) {
 
         //远程调用验证码服务校验验证码
-        String checkcode = authParamsDto.getCheckcode();
-        String checkcodeKey = authParamsDto.getCheckcodekey();
-        if(StringUtils.isBlank(checkcode)||StringUtils.isBlank(checkcodeKey)){
-            throw new RuntimeException("验证码为空");
-        }
-        Boolean verify = checkCodeClient.verify(checkcodeKey, checkcode);
-        if(!verify){
-            throw new RuntimeException("验证码输入错误");
-        }
+//        String checkcode = authParamsDto.getCheckcode();
+//        String checkcodeKey = authParamsDto.getCheckcodekey();
+//        if(StringUtils.isBlank(checkcode)||StringUtils.isBlank(checkcodeKey)){
+//            throw new RuntimeException("验证码为空");
+//        }
+//        Boolean verify = checkCodeClient.verify(checkcodeKey, checkcode);
+//        if(!verify){
+//            throw new RuntimeException("验证码输入错误");
+//        }
 
         String username = authParamsDto.getUsername();
         XcUser xcUser = xcUserMapper.selectOne(new LambdaQueryWrapper<XcUser>().eq(XcUser::getUsername, username));

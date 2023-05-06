@@ -114,9 +114,10 @@ public class CoursePublishServiceImpl implements CoursePublishService {
         }else{
             coursePublishPreMapper.updateById(coursePublishPre);
         }
-        //更新课程基本信息为已提交
+        //更新课程基本信息为已提交未发布
         CourseBase courseBase = courseBaseMapper.selectById(courseId);
         courseBase.setAuditStatus("202003");
+        courseBase.setStatus("203001");
         courseBaseMapper.updateById(courseBase);
     }
 
