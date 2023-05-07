@@ -1,8 +1,10 @@
 package com.xuecheng.learning.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuecheng.base.exception.XueChengPlusException;
 import com.xuecheng.content.model.po.CoursePublish;
+import com.xuecheng.learning.config.PayNotifyConfig;
 import com.xuecheng.learning.feignclient.ContentServiceClient;
 import com.xuecheng.learning.mapper.XcChooseCourseMapper;
 import com.xuecheng.learning.mapper.XcCourseTablesMapper;
@@ -11,15 +13,26 @@ import com.xuecheng.learning.model.dto.XcCourseTablesDto;
 import com.xuecheng.learning.model.po.XcChooseCourse;
 import com.xuecheng.learning.model.po.XcCourseTables;
 import com.xuecheng.learning.service.MyCourseTablesService;
+import com.xuecheng.messagesdk.model.po.MqMessage;
+import com.xuecheng.messagesdk.service.MqMessageService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageBuilderSupport;
+import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 public class MyCourseTablesServiceImpl implements MyCourseTablesService {
 
@@ -79,6 +92,37 @@ public class MyCourseTablesServiceImpl implements MyCourseTablesService {
             xcCourseTablesDto.setLearnStatus("702003");
             return xcCourseTablesDto;
         }
+    }
+
+    @Transactional
+    @Override
+    public boolean saveChooseCourseSuccess(String chooseCourseId) {
+        //查询选课记录
+        XcChooseCourse chooseCourse = chooseCourseMapper.selectById(chooseCourseId);
+        if(chooseCourse==null){
+            log.debug("收到支付结果通知没有查询到关联的选课记录,choosecourseId:{}",chooseCourseId);
+            return false;
+        }
+        String status = chooseCourse.getStatus();
+        if("701001".equals(status)){
+            addCourseTables(chooseCourse);
+            return true;
+        }
+        //待支付状态才处理
+        if("701002".equals(status)){
+            chooseCourse.setStatus("701001");
+            int i = chooseCourseMapper.updateById(chooseCourse);
+            if(i>0){
+                log.debug("收到支付结果通知处理成功,选课记录:{}",chooseCourse);
+                //添加到课程表
+                addCourseTables(chooseCourse);
+                return true;
+            }else{
+                log.debug("收到支付结果通知处理失败,选课记录:{}",chooseCourse);
+                return false;
+            }
+        }
+        return false;
     }
 
     //添加免费课程,免费课程加入选课记录表、我的课程表

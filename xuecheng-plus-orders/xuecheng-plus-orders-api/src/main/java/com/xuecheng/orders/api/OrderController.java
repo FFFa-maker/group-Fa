@@ -95,6 +95,15 @@ public class OrderController {
         httpResponse.getWriter().flush();
     }
 
+    @ApiOperation("查询支付结果")
+    @GetMapping("/payresult")
+    @ResponseBody
+    public PayRecordDto payresult(String payNo) throws IOException {
+        //查询支付结果
+        PayRecordDto payRecordDto = orderService.queryPayResult(payNo);
+        return payRecordDto;
+    }
+
     @PostMapping("/receivenotify")
     public void paynotify(HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException, AlipayApiException, IOException {
         Map<String,String> params = new HashMap<String,String>();
