@@ -26,8 +26,11 @@ import freemarker.template.Template;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
@@ -40,6 +43,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -60,6 +64,10 @@ public class CoursePublishServiceImpl implements CoursePublishService {
     MqMessageService mqMessageService;
     @Autowired
     MediaServiceClient mediaServiceClient;
+    @Autowired
+    RedisTemplate redisTemplate;
+    @Autowired
+    RedissonClient redissonClient;
 
     @Override
     public CoursePreviewDto getCoursePreviewInfo(Long courseId) {
@@ -79,7 +87,7 @@ public class CoursePublishServiceImpl implements CoursePublishService {
         if (courseBaseInfo == null) {
             XueChengPlusException.cast("未找到课程");
         }
-        if(!courseBaseInfo.getCompanyId().equals(companyId)){
+        if (!courseBaseInfo.getCompanyId().equals(companyId)) {
             XueChengPlusException.cast("不允许提交其他机构的课程");
         }
         String auditStatus = courseBaseInfo.getAuditStatus();
@@ -109,9 +117,9 @@ public class CoursePublishServiceImpl implements CoursePublishService {
 
         //存储或更新
         CoursePublishPre coursePublishPreObj = coursePublishPreMapper.selectById(courseId);
-        if(coursePublishPreObj==null){
+        if (coursePublishPreObj == null) {
             coursePublishPreMapper.insert(coursePublishPre);
-        }else{
+        } else {
             coursePublishPreMapper.updateById(coursePublishPre);
         }
         //更新课程基本信息为已提交未发布
@@ -126,15 +134,15 @@ public class CoursePublishServiceImpl implements CoursePublishService {
     public void publish(Long companyId, Long courseId) {
         //预发布表查数据
         CoursePublishPre coursePublishPre = coursePublishPreMapper.selectById(courseId);
-        if(coursePublishPre==null){
+        if (coursePublishPre == null) {
             XueChengPlusException.cast("请提交审核课程，审核通过后才可以发布");
         }
-        if(!coursePublishPre.getCompanyId().equals(companyId)){
+        if (!coursePublishPre.getCompanyId().equals(companyId)) {
             XueChengPlusException.cast("不允许发布其他机构课程");
         }
         //状态
         String status = coursePublishPre.getStatus();
-        if(!status.equals("202004")){
+        if (!status.equals("202004")) {
             XueChengPlusException.cast("课程审核未通过无法发布");
         }
         //写入发布表
@@ -147,12 +155,12 @@ public class CoursePublishServiceImpl implements CoursePublishService {
     }
 
     @Override
-    public File generateCourseHtml(long courseId){
+    public File generateCourseHtml(long courseId) {
         File htmlFile = null;
         Configuration configuration = new Configuration(Configuration.getVersion());
-        try{
+        try {
             String classpath = this.getClass().getResource("/").getPath();
-            configuration.setDirectoryForTemplateLoading(new File(classpath+"/templates/"));
+            configuration.setDirectoryForTemplateLoading(new File(classpath + "/templates/"));
             configuration.setDefaultEncoding("utf-8");
             Template template = configuration.getTemplate("course_template.ftl");
             CoursePreviewDto coursePreviewInfo = this.getCoursePreviewInfo(courseId);
@@ -163,18 +171,18 @@ public class CoursePublishServiceImpl implements CoursePublishService {
             htmlFile = File.createTempFile("course_publish", ".html");
             FileOutputStream outputStream = new FileOutputStream(htmlFile);
             IOUtils.copy(inputStream, outputStream);
-        }catch (Exception e){
-            log.error("课程静态化异常:{}",e.toString());
+        } catch (Exception e) {
+            log.error("课程静态化异常:{}", e.toString());
             e.printStackTrace();
         }
         return htmlFile;
     }
 
     @Override
-    public void uploadCourseHtml(Long courseId, File file){
+    public void uploadCourseHtml(Long courseId, File file) {
         MultipartFile multipartFile = MultipartSupportConfig.getMultipartFile(file);
-        String course = mediaServiceClient.uploadFile(multipartFile, "course/"+courseId+".html");
-        if(course==null){
+        String course = mediaServiceClient.uploadFile(multipartFile, "course/" + courseId + ".html");
+        if (course == null) {
             XueChengPlusException.cast("上传静态文件异常");
         }
     }
@@ -185,17 +193,48 @@ public class CoursePublishServiceImpl implements CoursePublishService {
         return coursePublish;
     }
 
-    private void saveCoursePublish(Long courseId){
+    @Override
+    public CoursePublish getCoursePublishCache(Long courseId) {
+        Object o = redisTemplate.opsForValue().get("course:" + courseId);
+        if (o != null) {
+            String jsonString = o.toString();
+            CoursePublish coursePublish = JSON.parseObject(jsonString, CoursePublish.class);
+            return coursePublish;
+        } else {
+            RLock lock = redissonClient.getLock("coursequreylock:" + courseId);
+            lock.lock();
+            try{
+                    o = redisTemplate.opsForValue().get("course:" + courseId);
+                    if (o != null) {
+                        String jsonString = o.toString();
+                        if ("null".equals(jsonString)) {
+                            return null;
+                        }
+                        CoursePublish coursePublish = JSON.parseObject(jsonString, CoursePublish.class);
+                        return coursePublish;
+                    }
+                    CoursePublish coursePublish = getCoursePublish(courseId);
+//            if (coursePublish != null) {
+                    redisTemplate.opsForValue().set("course:" + courseId, JSON.toJSONString(coursePublish), 30, TimeUnit.SECONDS);
+//            }
+                    return coursePublish;
+            }finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    private void saveCoursePublish(Long courseId) {
         CoursePublishPre coursePublishPre = coursePublishPreMapper.selectById(courseId);
-        if(coursePublishPre==null){
+        if (coursePublishPre == null) {
             XueChengPlusException.cast("课程预发布数据为空无法存入发布表");
         }
         CoursePublish coursePublish = new CoursePublish();
         BeanUtils.copyProperties(coursePublishPre, coursePublish);
         CoursePublish coursePublish1 = coursePublishMapper.selectById(courseId);
-        if(coursePublish1==null){
+        if (coursePublish1 == null) {
             coursePublishMapper.insert(coursePublish);
-        }else{
+        } else {
             coursePublishMapper.updateById(coursePublish);
         }
         //更新课程基本信息，课程状态为已发布
@@ -204,9 +243,9 @@ public class CoursePublishServiceImpl implements CoursePublishService {
         courseBaseMapper.updateById(courseBase);
     }
 
-    private void saveCoursePublishMessage(Long courseId){
+    private void saveCoursePublishMessage(Long courseId) {
         MqMessage mqMessage = mqMessageService.addMessage("course_publish", String.valueOf(courseId), null, null);
-        if(mqMessage==null){
+        if (mqMessage == null) {
             XueChengPlusException.cast(CommonError.UNKOWN_ERROR);
         }
     }

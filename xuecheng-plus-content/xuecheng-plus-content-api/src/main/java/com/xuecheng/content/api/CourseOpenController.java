@@ -1,6 +1,6 @@
 package com.xuecheng.content.api;
 
-import com.xuecheng.content.model.dto.CoursePreviewDto;
+import com.xuecheng.content.model.po.CoursePublish;
 import com.xuecheng.content.service.CourseBaseInfoService;
 import com.xuecheng.content.service.CoursePublishService;
 import io.swagger.annotations.Api;
@@ -21,8 +21,8 @@ public class CourseOpenController {
     private CoursePublishService coursePublishService;
 
     @GetMapping("/course/whole/{courseId}")
-    public CoursePreviewDto getPreviewInfo(@PathVariable("courseId") Long courseId){
-        CoursePreviewDto coursePreviewDto = coursePublishService.getCoursePreviewInfo(courseId);
-        return coursePreviewDto;
+    public CoursePublish getPreviewInfo(@PathVariable("courseId") Long courseId){
+        CoursePublish coursePublish = coursePublishService.getCoursePublishCache(courseId);
+        return coursePublish;
     }
 }

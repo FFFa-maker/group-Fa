@@ -206,3 +206,6 @@ GET {{content_host}}/content/r/coursepublish/2
 
 ###
 GET {{content_host}}/content/course/whole/131
+
+###
+GET {{content_host}}/content/course/whole/131
